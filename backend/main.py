@@ -21,6 +21,7 @@ from starlette.responses import FileResponse
 from .agent import root_agent
 
 FRONTEND_DIST = Path(__file__).parent.parent / "frontend" / "dist"
+SAMPLE_CONTENT = Path(__file__).parent.parent / "sample-content"
 APP_NAME = "content-engine"
 
 session_service = InMemorySessionService()
@@ -98,6 +99,11 @@ async def run_agent_sse(req: RunRequest):
 
     return EventSourceResponse(event_stream())
 
+
+# Serve sample blog content for testing Campaign Generation
+app.mount(
+    "/blog", StaticFiles(directory=str(SAMPLE_CONTENT), html=True), name="blog"
+)
 
 # Serve built React frontend in production
 if FRONTEND_DIST.exists():
