@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>End-to-End Content Engine</title>
+    <style>
+        :root {
+            --primary: #4682b4;
+            --primary-dark: #36648b;
+            --accent: #9370db;
+            --success: #155724;
+            --success-bg: #d4edda;
+            --bg: #f8f9fa;
+            --card-bg: #ffffff;
+            --text: #212529;
+            --text-muted: #6c757d;
+            --border: #dee2e6;
+            --log-bg: #1e1e2e;
+            --log-text: #cdd6f4;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        header h1 { font-size: 1.8rem; font-weight: 700; }
+        header p { opacity: 0.9; margin-top: 0.25rem; }
+
+        .container { max-width: 960px; margin: 0 auto; padding: 1.5rem; }
+
+        .tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--border);
+        }
+        .tab {
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+        .tab:hover { color: var(--primary); }
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .phase { display: none; }
+        .phase.active { display: block; }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .card h2 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: var(--primary-dark);
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            font-size: 0.9rem;
+        }
+        .hint {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        input[type="text"], input[type="url"] {
+            width: 100%;
+            padding: 0.6rem 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+            transition: border-color 0.2s;
+        }
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(70, 130, 180, 0.15);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.7rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-primary:disabled {
+            background: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        .log-panel {
+            background: var(--log-bg);
+            color: var(--log-text);
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+            font-size: 0.85rem;
+            max-height: 250px;
+            overflow-y: auto;
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+        .log-panel.visible { display: block; }
+        .log-entry { padding: 0.15rem 0; }
+        .log-entry.agent { color: #89b4fa; }
+        .log-entry.tool { color: #a6e3a1; }
+        .log-entry.error { color: #f38ba8; }
+        .log-entry.success { color: #a6e3a1; font-weight: 700; }
+
+        .results {
+            display: none;
+        }
+        .results.visible { display: block; }
+
+        .result-section {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+        .result-section summary {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            font-weight: 600;
+            background: #f1f3f5;
+            border-bottom: 1px solid var(--border);
+            user-select: none;
+        }
+        .result-section summary:hover { background: #e9ecef; }
+        .result-content {
+            padding: 1rem;
+            white-space: pre-wrap;
+            font-size: 0.9rem;
+            line-height: 1.7;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .status-badge.running {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .status-badge.done {
+            background: var(--success-bg);
+            color: var(--success);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>End-to-End Content Engine</h1>
+    <p>AI-powered SEO strategy &amp; campaign generation</p>
+</header>
+
+<div class="container">
+
+    <div class="tabs">
+        <button class="tab active" data-phase="phase1">Phase 1: Opportunity Discovery</button>
+        <button class="tab" data-phase="phase2">Phase 2: Campaign Generation</button>
+    </div>
+
+    <!-- Phase 1 -->
+    <div id="phase1" class="phase active">
+        <div class="card">
+            <h2>Discover Content Opportunities</h2>
+            <p class="hint" style="margin-bottom:1rem;">
+                Audit your blog and analyze the market to find high-value content gaps.
+            </p>
+
+            <label for="sitemap-url">Company Sitemap URL</label>
+            <div class="hint">e.g. https://your-blog.com/sitemap.xml</div>
+            <input type="url" id="sitemap-url" placeholder="https://example.com/sitemap.xml">
+
+            <label for="industry">Industry / Niche</label>
+            <div class="hint">e.g. cloud computing, fintech, healthcare IT</div>
+            <input type="text" id="industry" placeholder="cloud computing">
+
+            <label for="keywords">Seed Keywords</label>
+            <div class="hint">Comma-separated keywords to research</div>
+            <input type="text" id="keywords" placeholder="serverless, kubernetes, AI ops">
+
+            <button class="btn btn-primary" id="btn-phase1" onclick="runPhase1()">
+                Discover Opportunities
+            </button>
+        </div>
+
+        <div id="log-phase1" class="log-panel"></div>
+        <div id="results-phase1" class="results"></div>
+    </div>
+
+    <!-- Phase 2 -->
+    <div id="phase2" class="phase">
+        <div class="card">
+            <h2>Generate Campaign-in-a-Box</h2>
+            <p class="hint" style="margin-bottom:1rem;">
+                Paste a blog post URL to generate a complete multi-channel campaign with a single click.
+            </p>
+
+            <label for="blog-url">Blog Post URL</label>
+            <div class="hint">The URL of the new blog post to promote</div>
+            <input type="url" id="blog-url" placeholder="https://your-blog.com/your-new-post">
+
+            <button class="btn btn-primary" id="btn-phase2" onclick="runPhase2()">
+                Generate Campaign-in-a-Box
+            </button>
+        </div>
+
+        <div id="log-phase2" class="log-panel"></div>
+        <div id="results-phase2" class="results"></div>
+    </div>
+
+</div>
+
+<footer>
+    Powered by Google ADK &amp; Gemini 2.5 Flash
+</footer>
+
+<script>
+const API_BASE = window.location.origin;
+const APP_NAME = "backend";
+const USER_ID = "web-user";
+
+// --- Tab switching ---
+document.querySelectorAll(".tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+        document.querySelectorAll(".phase").forEach(p => p.classList.remove("active"));
+        tab.classList.add("active");
+        document.getElementById(tab.dataset.phase).classList.add("active");
+    });
+});
+
+// --- Logging ---
+function addLog(panelId, message, type = "") {
+    const panel = document.getElementById(panelId);
+    panel.classList.add("visible");
+    const entry = document.createElement("div");
+    entry.className = `log-entry ${type}`;
+    entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+    panel.appendChild(entry);
+    panel.scrollTop = panel.scrollHeight;
+}
+
+function clearPanel(panelId) {
+    const panel = document.getElementById(panelId);
+    panel.innerHTML = "";
+    panel.classList.remove("visible");
+}
+
+// --- Session management ---
+async function createSession() {
+    const sessionId = `session-${Date.now()}`;
+    const resp = await fetch(
+        `${API_BASE}/apps/${APP_NAME}/users/${USER_ID}/sessions`,
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: sessionId }),
+        }
+    );
+    if (!resp.ok) throw new Error(`Failed to create session: ${resp.status}`);
+    return sessionId;
+}
+
+// --- Run agent via SSE ---
+async function runAgent(message, logPanelId, resultsPanelId, btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Running...';
+    clearPanel(logPanelId);
+    const resultsDiv = document.getElementById(resultsPanelId);
+    resultsDiv.innerHTML = "";
+    resultsDiv.classList.remove("visible");
+
+    try {
+        addLog(logPanelId, "Creating session...", "agent");
+        const sessionId = await createSession();
+        addLog(logPanelId, `Session created: ${sessionId}`, "agent");
+        addLog(logPanelId, "Sending request to orchestrator...", "agent");
+
+        const resp = await fetch(`${API_BASE}/run_sse`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                app_name: APP_NAME,
+                user_id: USER_ID,
+                session_id: sessionId,
+                new_message: {
+                    role: "user",
+                    parts: [{ text: message }],
+                },
+                streaming: false,
+            }),
+        });
+
+        if (!resp.ok) throw new Error(`API error: ${resp.status}`);
+
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let finalText = "";
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop();
+
+            for (const line of lines) {
+                if (!line.startsWith("data: ")) continue;
+                const data = line.slice(6).trim();
+                if (!data || data === "[DONE]") continue;
+
+                try {
+                    const event = JSON.parse(data);
+                    const author = event.author || "system";
+                    const parts = event.content?.parts || [];
+
+                    for (const part of parts) {
+                        if (part.function_call) {
+                            addLog(
+                                logPanelId,
+                                `${author}: calling ${part.function_call.name}(...)`,
+                                "tool"
+                            );
+                        } else if (part.function_response) {
+                            addLog(
+                                logPanelId,
+                                `${author}: ${part.function_response.name} returned`,
+                                "tool"
+                            );
+                        } else if (part.text) {
+                            addLog(logPanelId, `${author}: responding...`, "agent");
+                            finalText = part.text;
+                        }
+                    }
+                } catch (_) {}
+            }
+        }
+
+        if (finalText) {
+            addLog(logPanelId, "Complete!", "success");
+            renderResults(resultsPanelId, finalText);
+        } else {
+            addLog(logPanelId, "No response received.", "error");
+        }
+    } catch (err) {
+        addLog(logPanelId, `Error: ${err.message}`, "error");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = btn.dataset.label;
+    }
+}
+
+// --- Render markdown-ish results ---
+function renderResults(panelId, text) {
+    const div = document.getElementById(panelId);
+    div.classList.add("visible");
+
+    // Split into sections by ## or ** headers
+    const sections = text.split(/(?=^##\s|^\*\*)/m).filter(s => s.trim());
+
+    if (sections.length <= 1) {
+        const detail = document.createElement("details");
+        detail.className = "result-section";
+        detail.open = true;
+        detail.innerHTML = `
+            <summary>Results</summary>
+            <div class="result-content">${escapeHtml(text)}</div>
+        `;
+        div.appendChild(detail);
+        return;
+    }
+
+    for (const section of sections) {
+        const lines = section.trim().split("\n");
+        let title = lines[0].replace(/^#+\s*/, "").replace(/^\*\*|\*\*$/g, "").trim();
+        const body = lines.slice(1).join("\n").trim();
+
+        const detail = document.createElement("details");
+        detail.className = "result-section";
+        detail.open = true;
+        detail.innerHTML = `
+            <summary>${escapeHtml(title)}</summary>
+            <div class="result-content">${escapeHtml(body || lines.join("\n"))}</div>
+        `;
+        div.appendChild(detail);
+    }
+}
+
+function escapeHtml(str) {
+    const el = document.createElement("span");
+    el.textContent = str;
+    return el.innerHTML;
+}
+
+// --- Phase handlers ---
+function runPhase1() {
+    const sitemap = document.getElementById("sitemap-url").value.trim();
+    const industry = document.getElementById("industry").value.trim();
+    const keywords = document.getElementById("keywords").value.trim();
+
+    if (!sitemap || !industry || !keywords) {
+        alert("Please fill in all fields for Phase 1.");
+        return;
+    }
+
+    const btn = document.getElementById("btn-phase1");
+    btn.dataset.label = btn.innerHTML;
+
+    const message =
+        `Run Phase 1: Opportunity Discovery.\n` +
+        `Sitemap URL: ${sitemap}\n` +
+        `Industry: ${industry}\n` +
+        `Seed Keywords: ${keywords}`;
+
+    runAgent(message, "log-phase1", "results-phase1", btn);
+}
+
+function runPhase2() {
+    const blogUrl = document.getElementById("blog-url").value.trim();
+
+    if (!blogUrl) {
+        alert("Please enter a blog post URL.");
+        return;
+    }
+
+    const btn = document.getElementById("btn-phase2");
+    btn.dataset.label = btn.innerHTML;
+
+    const message =
+        `Run Phase 2: Campaign Generation.\n` +
+        `Blog Post URL: ${blogUrl}`;
+
+    runAgent(message, "log-phase2", "results-phase2", btn);
+}
+</script>
+
+</body>
+</html>
