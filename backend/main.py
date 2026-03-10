@@ -8,6 +8,11 @@
 import uuid
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+# Load backend/.env before any Google SDK imports
+load_dotenv(Path(__file__).parent / ".env")
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
