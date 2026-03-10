@@ -1,0 +1,62 @@
+.panel {
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  margin-bottom: 1.5rem;
+}
+
+.header {
+  background: #16162a;
+  color: #94a3b8;
+  padding: 0.6rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #a6e3a1;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.body {
+  background: var(--log-bg);
+  padding: 0.75rem 1rem;
+  max-height: 280px;
+  overflow-y: auto;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 0.8rem;
+  line-height: 1.7;
+}
+
+.entry {
+  display: flex;
+  gap: 0.6rem;
+  align-items: baseline;
+}
+
+.time {
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.badge {
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
+.message {
+  color: var(--log-text);
+}
