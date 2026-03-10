@@ -133,20 +133,20 @@ graph TD
 
 | Agent Tier              | Name                            | Core Technology             | Function                                                                           |
 | ----------------------- | ------------------------------- | --------------------------- | ---------------------------------------------------------------------------------- |
-| **Level 0: Orchestrator** | `Main Orchestrator Agent`       | Cloud Run                   | Manages the entire workflow, state, and calls Phase Agents.                        |
-| **Level 1: Sub-Agent**    | `Opportunity Discovery Agent`   | LangChain / Gemini Function Calling | Executes Phase 1 by invoking its specialized tools to produce the Gap Report.      |
-| **Level 1: Sub-Agent**    | `Campaign Generation Agent`     | LangChain / Gemini Function Calling | Executes Phase 2 by invoking its tools to produce the Campaign-in-a-Box.           |
+| **Level 0: Orchestrator** | `Main Orchestrator Agent`       | Google ADK + Vertex AI Agent Engine (served via Cloud Run) | Manages the entire workflow, state, and calls Phase Agents.                        |
+| **Level 1: Sub-Agent**    | `Opportunity Discovery Agent`   | Google ADK                  | Executes Phase 1 by invoking its specialized tools to produce the Gap Report.      |
+| **Level 1: Sub-Agent**    | `Campaign Generation Agent`     | Google ADK                  | Executes Phase 2 by invoking its tools to produce the Campaign-in-a-Box.           |
 
 ### Tool Agents (Level 2)
 
 | Phase   | Tool Agent                  | Model                           | Function                                                                         |
 | ------- | --------------------------- | ------------------------------- | -------------------------------------------------------------------------------- |
-| Phase 1 | `Internal Content Auditor`  | Gemini Pro                      | Scrapes and analyzes internal content to determine topic authority.              |
-| Phase 1 | `Market Analyzer`           | Gemini Pro                      | Fetches and analyzes SEO/trend data to find competitor/market opportunities.     |
-| Phase 1 | `Strategic Gap Finder`      | Gemini Pro                      | Compares internal vs. market data to produce a prioritized `Content Gap Report`. |
-| Phase 2 | `Content Deconstructor`     | Gemini Pro                      | Extracts key themes, quotes, and data from a new blog post.                      |
-| Phase 2 | `Multi-Asset Generator`     | Gemini Flash (for parallel runs) | Generates text assets (social, email, etc.) from the deconstructed content.    |
-| Phase 2 | `Visual Asset Agent`        | Imagen 2 on Vertex AI          | Generates or fetches a relevant image for the campaign.                          |
+| Phase 1 | `Internal Content Auditor`  | Gemini 2.5 Flash                | Scrapes and analyzes internal content to determine topic authority.              |
+| Phase 1 | `Market Analyzer`           | Gemini 2.5 Flash                | Fetches and analyzes SEO/trend data to find competitor/market opportunities.     |
+| Phase 1 | `Strategic Gap Finder`      | Gemini 2.5 Flash                | Compares internal vs. market data to produce a prioritized `Content Gap Report`. |
+| Phase 2 | `Content Deconstructor`     | Gemini 2.5 Flash                | Extracts key themes, quotes, and data from a new blog post.                      |
+| Phase 2 | `Multi-Asset Generator`     | Gemini 2.5 Flash (parallel runs) | Generates text assets (social, email, etc.) from the deconstructed content.   |
+| Phase 2 | `Visual Asset Agent`        | Imagen on Vertex AI             | Generates or fetches a relevant image for the campaign.                          |
 
 ## 5. Data Flow & Orchestration
 
@@ -203,27 +203,35 @@ The Google ADK is the critical layer that turns our Python-based agents into usa
 
 1.  **Exposing the Agent as an API**: We wrap our `Main Orchestrator Agent` in a lightweight web server (e.g., Flask, FastAPI). The Google ADK provides the core logic for running the agent.
 
+    > **Note**: The snippet below is illustrative pseudocode showing the integration pattern. Refer to the [Google ADK documentation](https://google.github.io/adk-docs/) for the authoritative API.
+
     ```python
-    # Example using Flask and the ADK
-    from flask import Flask, request, jsonify
-    from adk import run_agent # Hypothetical ADK function
-    from agents.main_orchestrator import MainOrchestratorAgent
+    # Illustrative pseudocode — not copy-paste ready
+    # Real implementation uses google.adk.runners and google.adk.sessions
+    from fastapi import FastAPI, HTTPException
+    from google.adk.runners import Runner
+    from google.adk.sessions import InMemorySessionService
+    from agents.main_orchestrator import root_agent  # ADK agent definition
 
-    app = Flask(__name__)
+    app = FastAPI()
+    session_service = InMemorySessionService()
+    runner = Runner(agent=root_agent, session_service=session_service)
 
-    @app.route('/api/v1/run-campaign', methods=['POST'])
-    def run_campaign_endpoint():
-        data = request.get_json()
-        post_url = data.get('post_url')
+    @app.post('/api/v1/run-campaign')
+    async def run_campaign_endpoint(payload: dict):
+        post_url = payload.get('post_url')
 
         if not post_url:
-            return jsonify({'error': 'post_url is required'}), 400
+            raise HTTPException(status_code=400, detail='post_url is required')
 
-        # The ADK handles the complexity of running the agent session
-        # It invokes the agent's main loop with the provided arguments.
-        result = run_agent(MainOrchestratorAgent, initial_input=post_url, task="run_phase_2")
+        # ADK Runner manages agent lifecycle, sub-agent calls, and tool execution
+        result = await runner.run_async(
+            user_id="content-engine",
+            session_id="campaign-run",
+            new_message=post_url,
+        )
 
-        return jsonify(result) # Returns the Campaign-in-a-Box
+        return result  # Returns the Campaign-in-a-Box
     ```
 
 2.  **Frontend User Action**:
