@@ -19,25 +19,26 @@ The system is decoupled into two phases coordinated by a **Content Engine Orches
 1.  **Orchestrator Agent**:
     - Central hub for task routing and state management.
     - Uses Gemini 2.5 Flash for rapid decision making.
-2.  **SEO Strategist (Phase 1)**:
+2.  **Opportunity Discovery Agent (Phase 1)**:
     - **Goal**: Opportunity Discovery.
     - **Activities**: Audit internal content, analyze competitive SEO data, identify content gaps.
-3.  **Creative Agent (Phase 2)**:
+3.  **Campaign Generation Agent (Phase 2)**:
     - **Goal**: Campaign Generation.
-    - **Activities**: Deconstruct long-form content, generate multi-channel text assets, suggest/generate visuals.
+    - **Activities**: Deconstruct long-form content, generate multi-channel text assets (concurrently), suggest/generate visuals.
 
 ---
 
 ## 3. Data Integration & Tools (MCP)
 
 ### Phase 1 Tools:
-- `blog_auditor`: Scrapes and analyzes existing company blog/sitemap.
-- `market_analyzer`: Ingests competitive SEO data (via external API integration or sample data).
+- `internal_content_auditor`: Scrapes and analyzes existing company blog/sitemap to determine topic authority.
+- `market_analyzer`: Ingests competitive SEO data (via external API integration or sample data) to find market opportunities.
+- `strategic_gap_finder`: Compares internal content data against market data to produce a prioritized Content Gap Report.
 
 ### Phase 2 Tools:
-- `content_parser`: Extracts structured themes from blog posts.
-- `asset_generator`: specialized templates for Social, Email, and Ads.
-- `visual_suggester`: Connects to Brand Image Library or invokes Imagen for generation.
+- `content_deconstructor`: Extracts structured themes, key arguments, and data from a new blog post.
+- `multi_asset_generator`: Generates text assets (social posts, email copy, ad variations) from deconstructed content; runs in parallel with `visual_asset_agent`.
+- `visual_asset_agent`: Connects to Brand Image Library (GCS) or invokes Imagen on Vertex AI for image generation.
 
 ---
 
