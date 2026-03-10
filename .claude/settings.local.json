@@ -5,7 +5,11 @@
       "Bash(uv sync:*)",
       "Bash(uv run:*)",
       "Bash(lsof -ti :8080 | xargs kill -9 2>/dev/null; echo \"Port 8080 freed\")",
-      "Bash(fuser -k 8080/tcp 2>/dev/null; sleep 1; fuser 8080/tcp 2>/dev/null && echo \"Still in use\" || echo \"Port 8080 is free\")"
+      "Bash(fuser -k 8080/tcp 2>/dev/null; sleep 1; fuser 8080/tcp 2>/dev/null && echo \"Still in use\" || echo \"Port 8080 is free\")",
+      "Bash(cd /usr/local/google/home/wangdave/remote_ws/projects/ai-summit-team11/frontend && npm init -y 2>&1 | tail -5)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)"
     ]
   }
 }

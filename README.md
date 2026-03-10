@@ -33,13 +33,18 @@ Orchestrator Agent
 
 ```
 ai-summit-team11/
-├── backend/                 # Google ADK agents & API
+├── backend/                 # Google ADK agents & FastAPI server
 │   ├── agent.py             # Orchestrator + sub-agent definitions
 │   ├── tools.py             # 6 tool functions (3 per phase)
-│   ├── main.py              # FastAPI entry point
+│   ├── main.py              # FastAPI entry point (serves API + built frontend)
 │   └── .env                 # GCP environment variables
-├── frontend/                # Web UI
-│   └── index.html           # Single-page app with Phase 1 & Phase 2 tabs
+├── frontend/                # React + TypeScript UI (Vite)
+│   ├── src/
+│   │   ├── App.tsx          # Main app with phase tabs
+│   │   ├── api.ts           # ADK API client with SSE streaming
+│   │   └── components/      # Phase1, Phase2, LogPanel, ResultsPanel
+│   ├── package.json
+│   └── vite.config.ts       # Dev proxy to backend on :8000
 ├── docs/                    # Design & planning documents
 │   ├── SCOPE.md             # Business requirements & success criteria
 │   ├── SPEC.md              # Technical specification
@@ -55,39 +60,54 @@ ai-summit-team11/
 
 - Python 3.10+
 - [uv](https://docs.astral.sh/uv/) package manager
+- Node.js 18+
 - A Google Cloud project with Vertex AI enabled
 
 ### Setup
 
 ```bash
-# Install dependencies
+# Install backend dependencies
 uv sync
+
+# Install frontend dependencies
+cd frontend && npm install && cd ..
 
 # Configure environment
 cp backend/.env backend/.env.local
 # Edit backend/.env.local with your GCP project ID
 ```
 
-### Run Locally
+### Run Locally (Development)
+
+Start the backend and frontend in separate terminals:
 
 ```bash
-# Option 1: ADK dev playground (agents only)
-uv run adk web 
+# Terminal 1 — Backend API (port 8000)
+uv run uvicorn backend.main:app --host 0.0.0.0 --port 8000
 
-# Option 2: Full app with frontend
-uv run uvicorn backend.main:fast_api_app --host 0.0.0.0 --port 8000
-# Open http://localhost:8000
+# Terminal 2 — Frontend dev server (port 3000, proxies API to :8000)
+cd frontend && npm run dev
 ```
+
+Open **http://localhost:3000** in your browser.
+
+### Run Locally (Production Build)
+
+```bash
+# Build the frontend
+cd frontend && npm run build && cd ..
+
+# Start the backend (serves built frontend at /)
+uv run uvicorn backend.main:app --host 0.0.0.0 --port 8000
+```
+
+Open **http://localhost:8000**.
 
 ### Deploy to Cloud Run
 
 ```bash
-# Build and deploy
 docker build -t content-engine .
-docker run -p 8080:8080 content-engine
-
-# Or use ADK CLI
-uv run adk deploy cloud_run --project=YOUR_PROJECT --region=us-central1 backend/
+docker run -p 8000:8000 content-engine
 ```
 
 ## Tech Stack
@@ -99,7 +119,7 @@ uv run adk deploy cloud_run --project=YOUR_PROJECT --region=us-central1 backend/
 | Image Gen | Imagen on Vertex AI |
 | Deployment | Vertex AI Agent Engine / Cloud Run |
 | Cloud | GCP (BigQuery, Secret Manager, GCS) |
-| Frontend | Vanilla HTML/CSS/JS with SSE streaming |
+| Frontend | React, TypeScript, Vite, CSS Modules |
 
 ## Success Metrics
 
