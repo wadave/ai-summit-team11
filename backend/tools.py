@@ -188,10 +188,24 @@ def content_deconstructor(blog_url: str) -> dict:
         A dict with the extracted title, headings, body content, and word count.
     """
     try:
-        resp = requests.get(blog_url, timeout=15)
-        resp.raise_for_status()
+        # Handle local sample-content files served by the same backend
+        from pathlib import Path
+        from urllib.parse import urlparse
 
-        soup = BeautifulSoup(resp.content, "html.parser")
+        parsed = urlparse(blog_url)
+        if parsed.hostname in ("localhost", "127.0.0.1") and parsed.path.startswith("/blog/"):
+            filename = parsed.path.removeprefix("/blog/")
+            local_path = Path(__file__).parent.parent / "sample-content" / filename
+            if local_path.exists():
+                html_content = local_path.read_bytes()
+            else:
+                return {"status": "error", "message": f"Local file not found: {filename}"}
+        else:
+            resp = requests.get(blog_url, timeout=15)
+            resp.raise_for_status()
+            html_content = resp.content
+
+        soup = BeautifulSoup(html_content, "html.parser")
 
         title_tag = soup.find("title")
         h1_tag = soup.find("h1")
