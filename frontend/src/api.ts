@@ -1,6 +1,4 @@
-const API_BASE = "";
-const APP_NAME = "backend";
-const USER_ID = "web-user";
+const API_BASE = import.meta.env.DEV ? "http://localhost:8000" : "";
 
 export interface LogEntry {
   time: string;
@@ -9,17 +7,13 @@ export interface LogEntry {
 }
 
 export async function createSession(): Promise<string> {
-  const sessionId = `session-${Date.now()}`;
-  const resp = await fetch(
-    `${API_BASE}/apps/${APP_NAME}/users/${USER_ID}/sessions`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: sessionId }),
-    }
-  );
+  const resp = await fetch(`${API_BASE}/api/sessions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
   if (!resp.ok) throw new Error(`Failed to create session: ${resp.status}`);
-  return sessionId;
+  const data = await resp.json();
+  return data.id;
 }
 
 export async function runAgent(
@@ -28,17 +22,12 @@ export async function runAgent(
   onResult: (text: string) => void,
   signal?: AbortSignal
 ): Promise<void> {
-  onLog({
-    time: now(),
-    message: "Creating session...",
-    type: "info",
-  });
+  onLog({ time: now(), message: "Creating session...", type: "info" });
 
   const sessionId = await createSession();
-
   onLog({
     time: now(),
-    message: `Session ${sessionId.slice(0, 16)}... created`,
+    message: `Session ${sessionId.slice(0, 12)}... created`,
     type: "info",
   });
 
@@ -48,19 +37,10 @@ export async function runAgent(
     type: "agent",
   });
 
-  const resp = await fetch(`${API_BASE}/run_sse`, {
+  const resp = await fetch(`${API_BASE}/api/run`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      app_name: APP_NAME,
-      user_id: USER_ID,
-      session_id: sessionId,
-      new_message: {
-        role: "user",
-        parts: [{ text: message }],
-      },
-      streaming: false,
-    }),
+    body: JSON.stringify({ session_id: sessionId, message }),
     signal,
   });
 
@@ -69,7 +49,7 @@ export async function runAgent(
   const reader = resp.body!.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
-  let finalText = "";
+  let lastText = "";
 
   while (true) {
     const { done, value } = await reader.read();
@@ -79,47 +59,56 @@ export async function runAgent(
     const lines = buffer.split("\n");
     buffer = lines.pop() || "";
 
+    let currentEvent = "";
+
     for (const line of lines) {
+      if (line.startsWith("event: ")) {
+        currentEvent = line.slice(7).trim();
+        continue;
+      }
       if (!line.startsWith("data: ")) continue;
-      const data = line.slice(6).trim();
-      if (!data || data === "[DONE]") continue;
+      const raw = line.slice(6).trim();
+      if (!raw) continue;
 
       try {
-        const event = JSON.parse(data);
-        const author: string = event.author || "system";
-        const parts = event.content?.parts || [];
+        const data = JSON.parse(raw);
 
-        for (const part of parts) {
-          if (part.function_call) {
+        switch (currentEvent) {
+          case "tool_call":
             onLog({
               time: now(),
-              message: `${author} → ${part.function_call.name}()`,
+              message: `${data.author} → ${data.tool}()`,
               type: "tool",
             });
-          } else if (part.function_response) {
+            break;
+          case "tool_result":
             onLog({
               time: now(),
-              message: `${part.function_response.name} returned`,
+              message: `${data.tool} returned`,
               type: "tool",
             });
-          } else if (part.text) {
+            break;
+          case "message":
             onLog({
               time: now(),
-              message: `${author} responding...`,
+              message: `${data.author} responding...`,
               type: "agent",
             });
-            finalText = part.text;
-          }
+            lastText = data.text;
+            break;
+          case "done":
+            break;
         }
       } catch {
         // skip malformed JSON
       }
+      currentEvent = "";
     }
   }
 
-  if (finalText) {
+  if (lastText) {
     onLog({ time: now(), message: "Complete!", type: "success" });
-    onResult(finalText);
+    onResult(lastText);
   } else {
     onLog({ time: now(), message: "No response received.", type: "error" });
   }
