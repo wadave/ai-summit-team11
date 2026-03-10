@@ -72,11 +72,11 @@ cp backend/.env backend/.env.local
 
 ```bash
 # Option 1: ADK dev playground (agents only)
-uv run adk web backend/
+uv run adk web 
 
 # Option 2: Full app with frontend
-uv run uvicorn backend.main:fast_api_app --host 0.0.0.0 --port 8080
-# Open http://localhost:8080
+uv run uvicorn backend.main:fast_api_app --host 0.0.0.0 --port 8000
+# Open http://localhost:8000
 ```
 
 ### Deploy to Cloud Run
