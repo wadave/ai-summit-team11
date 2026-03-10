@@ -9,7 +9,11 @@
       "Bash(cd /usr/local/google/home/wangdave/remote_ws/projects/ai-summit-team11/frontend && npm init -y 2>&1 | tail -5)",
       "Bash(npm install:*)",
       "Bash(npx tsc:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/list-apps 2>&1 && echo \"\" && curl -s http://localhost:8000/list-apps 2>&1)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/ 2>&1)",
+      "Bash(kill -9 24859 2>/dev/null; sleep 1; echo \"Old Vite process killed\")",
+      "Bash(fuser -k 8000/tcp 2>/dev/null; sleep 1; echo \"Port 8000 freed\")"
     ]
   }
 }

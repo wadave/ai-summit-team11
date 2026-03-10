@@ -10,10 +10,18 @@ export default defineConfig({
       interval: 1000,
     },
     proxy: {
-      "/apps": "http://localhost:8000",
-      "/run_sse": "http://localhost:8000",
-      "/run": "http://localhost:8000",
-      "/list-apps": "http://localhost:8000",
+      "/apps": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/run_sse": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/list-apps": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
     },
   },
   build: {
