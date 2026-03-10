@@ -166,3 +166,79 @@ graph TD
 9.  **Aggregate Campaign**: The `Campaign Generation Agent` collects the outputs from all its tools and bundles them into the final `Campaign-in-a-Box`.
 10. **Workflow End**: The `Campaign Generation Agent` returns the completed campaign bundle to the `Main Orchestrator`, concluding the process.
 
+## 6. Frontend UI & ADK Integration
+
+For a compelling demo, the user interface will be minimalist, focusing on the simplicity of the input and the richness of the output. This section details the UI and, crucially, how it connects to the backend via the **Google Agent Development Kit (ADK)**.
+
+### UI Mockup (ASCII)
+
+```
++------------------------------------------------------------------------------------+
+|                            END-TO-END CONTENT ENGINE                             |
++------------------------------------------------------------------------------------+
+|                                                                                    |
+|  PHASE 2: CREATE A CAMPAIGN WITH A SINGLE CLICK                                    |
+|  ================================================                                  |
+|                                                                                    |
+|  Enter the URL of your new blog post:                                              |
+|  [ https://your-blog.com/serverless-agentic-workflows... |__________________ ]     |
+|                                                                                    |
+|  +---------------------------+                                                     |
+|  | GENERATE CAMPAIGN-IN-A-BOX|                                                     |
+|  +---------------------------+                                                     |
+|                                                                                    |
+|  OUTPUT: (Live-updating log shows agents running, then results appear below...)    |
+|   - [LOG] Main Orchestrator: Received request. Invoking Campaign Generation Agent... |
+|   - [LOG] Campaign Gen Agent: Invoking Content Deconstructor tool...                 |
+|   - [LOG] Content Deconstructor: Success. Tokens: 850.                              |
+|   - [LOG] Campaign Gen Agent: Invoking Multi-Asset and Visual Asset tools...         |
+|   - [SUCCESS] Campaign Ready!                                                      |
+|  [RESULTS PANEL WITH SOCIAL POSTS, EMAIL COPY, AD COPY, AND GENERATED IMAGE]       |
++------------------------------------------------------------------------------------+
+```
+
+### Connecting UI to Agents via Google ADK
+
+The Google ADK is the critical layer that turns our Python-based agents into usable services. The connection from the frontend to the complex agent hierarchy is made simple through an API endpoint built on the ADK.
+
+1.  **Exposing the Agent as an API**: We wrap our `Main Orchestrator Agent` in a lightweight web server (e.g., Flask, FastAPI). The Google ADK provides the core logic for running the agent.
+
+    ```python
+    # Example using Flask and the ADK
+    from flask import Flask, request, jsonify
+    from adk import run_agent # Hypothetical ADK function
+    from agents.main_orchestrator import MainOrchestratorAgent
+
+    app = Flask(__name__)
+
+    @app.route('/api/v1/run-campaign', methods=['POST'])
+    def run_campaign_endpoint():
+        data = request.get_json()
+        post_url = data.get('post_url')
+
+        if not post_url:
+            return jsonify({'error': 'post_url is required'}), 400
+
+        # The ADK handles the complexity of running the agent session
+        # It invokes the agent's main loop with the provided arguments.
+        result = run_agent(MainOrchestratorAgent, initial_input=post_url, task="run_phase_2")
+
+        return jsonify(result) # Returns the Campaign-in-a-Box
+    ```
+
+2.  **Frontend User Action**:
+    *   A user pastes the URL and clicks `GENERATE CAMPAIGN-IN-A-BOX`.
+
+3.  **API Call**:
+    *   The frontend sends a `POST` request to our `/api/v1/run-campaign` endpoint with the URL in the JSON body.
+
+4.  **ADK Invocation**:
+    *   The web server receives the request.
+    *   The `run_agent` function from the Google ADK is called. This function is responsible for:
+        *   Instantiating the `Main Orchestrator Agent`.
+        *   Starting its execution loop.
+        *   Passing the `post_url` as the initial input for its `run_phase_2` task.
+    *   The ADK manages the entire lifecycle of the agent run, including invoking sub-agents and tools as defined in our architecture.
+
+This architecture creates a clean separation: the frontend doesn't need to know about the complex agent interactions. It only needs to know about a single API endpoint, and the ADK provides the robust framework to make that single point of contact powerful enough to drive the entire system.
+
