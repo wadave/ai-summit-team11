@@ -45,7 +45,7 @@ ai-summit-team11/
 │   ├── SPEC.md              # Technical specification
 │   └── SYSTEM_DESIGN.md     # Detailed system design & architecture
 ├── Dockerfile               # Cloud Run container
-├── requirements.txt         # Python dependencies
+├── pyproject.toml           # Python dependencies (uv)
 └── README.md
 ```
 
@@ -54,14 +54,14 @@ ai-summit-team11/
 ### Prerequisites
 
 - Python 3.10+
+- [uv](https://docs.astral.sh/uv/) package manager
 - A Google Cloud project with Vertex AI enabled
-- [Google ADK](https://google.github.io/adk-docs/) installed
 
 ### Setup
 
 ```bash
 # Install dependencies
-pip install -r requirements.txt
+uv sync
 
 # Configure environment
 cp backend/.env backend/.env.local
@@ -72,10 +72,10 @@ cp backend/.env backend/.env.local
 
 ```bash
 # Option 1: ADK dev playground (agents only)
-adk web backend/
+uv run adk web backend/
 
 # Option 2: Full app with frontend
-uvicorn backend.main:fast_api_app --host 0.0.0.0 --port 8080
+uv run uvicorn backend.main:fast_api_app --host 0.0.0.0 --port 8080
 # Open http://localhost:8080
 ```
 
@@ -87,7 +87,7 @@ docker build -t content-engine .
 docker run -p 8080:8080 content-engine
 
 # Or use ADK CLI
-adk deploy cloud_run --project=YOUR_PROJECT --region=us-central1 backend/
+uv run adk deploy cloud_run --project=YOUR_PROJECT --region=us-central1 backend/
 ```
 
 ## Tech Stack
